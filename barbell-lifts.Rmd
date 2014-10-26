@@ -97,11 +97,10 @@ if (loadExistingModel) {
 predictions_test <- predict(modFit, testing)
 confusion_test <- confusionMatrix(predictions_test, testing$classe)
 
-# print standard output, which includes the "accuracy" metric we can use to estimate out of sample error rate
+# print standard output, which includes the "accuracy" metric we can use to estimate out-of-sample error rate
 confusion_test
 
-# the accuracy is 99.6%, indicating an extremely low out of sample error rate.
-# in addition, the sensitivity and specificity for every class is >= 99%, again indicating very low out of sample error.
+# the accuracy is 99.6%, indicating an extremely low out-of-sample error rate of 0.4%.
 
 # print heatmap output
 confusion_test_df <- as.data.frame(confusion_test$table)
