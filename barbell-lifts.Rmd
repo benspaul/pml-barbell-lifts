@@ -1,0 +1,133 @@
+---
+title: "Barbell Lifts"
+author: "Ben Paul"
+date: "Saturday, October 11, 2014"
+output: html_document
+---
+
+```{r loading libraries, echo=FALSE}
+
+require(caret)
+require(dplyr)
+require(randomForest)
+require(e1071)
+
+```
+
+```{r loading data}
+
+############### loading data ###############
+
+# first, remove existing data
+rm(list=ls())
+
+# then, download data if it's not already downloaded
+
+# note: although the remote file names are called "pml-training" and "pml-testing",
+# I will be splitting up the "training" group into its own training and testing subsets.
+# Therefore, I will refer to the "pml-testing" file as my validation data rather than
+# my testing data.
+
+training_and_testing_src <- 'http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv'
+training_and_testing_dest <- 'data/training_and_testing.csv'
+
+if (!file.exists(training_and_testing_dest)) {
+  download.file(url = training_and_testing_src,
+                destfile = training_and_testing_dest)
+}
+
+if (!exists('training_and_testing')) {
+  training_and_testing <- read.csv(file = training_and_testing_dest)
+}
+
+validation_src <- 'http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv'
+validation_dest <- 'data/validation_dest.csv'
+
+if (!file.exists(validation_dest)) {
+  download.file(url = validation_src,
+                destfile = validation_dest)
+}
+
+if (!exists('validation')) {
+  validation <- read.csv(file = validation_dest)
+}
+
+```
+
+```{r splitting training and testing data}
+
+# splitting training and testing data
+
+inTrain <- createDataPartition(y=training_and_testing$classe, p=0.60, list=FALSE)
+training <- training_and_testing[inTrain,]
+testing <- training_and_testing[-inTrain,]
+
+```
+
+```{r cleaning data}
+
+############### cleaning data ###############
+
+# select only the variables that have non-NA, non-empty values in the testing set
+# ...plus the outcome variable (classe)
+training <- training %>% select(classe, user_name, roll_belt, pitch_belt, yaw_belt, total_accel_belt, gyros_belt_x, gyros_belt_y, gyros_belt_z, accel_belt_x, accel_belt_y, accel_belt_z, magnet_belt_x, magnet_belt_y, magnet_belt_z, roll_arm, pitch_arm, yaw_arm, total_accel_arm, gyros_arm_x, gyros_arm_y, gyros_arm_z, accel_arm_x, accel_arm_y, accel_arm_z, magnet_arm_x, magnet_arm_y, magnet_arm_z, roll_dumbbell, pitch_dumbbell, yaw_dumbbell, total_accel_dumbbell, gyros_dumbbell_x, gyros_dumbbell_y, gyros_dumbbell_z, accel_dumbbell_x, accel_dumbbell_y, accel_dumbbell_z, magnet_dumbbell_x, magnet_dumbbell_y, magnet_dumbbell_z, roll_forearm, pitch_forearm, yaw_forearm, total_accel_forearm, gyros_forearm_x, gyros_forearm_y, gyros_forearm_z, accel_forearm_x, accel_forearm_y, accel_forearm_z, magnet_forearm_x, magnet_forearm_y, magnet_forearm_z)
+
+# check for variables with near-zero variance; there aren't any, so we don't have to remove any
+nzv <- nearZeroVar(training)
+```
+
+```{r training with random forests}
+
+# training with random forests
+
+# loading previously created model rather than recreating every time and waiting an hour
+loadExistingModel <- TRUE
+
+if (loadExistingModel) {
+  load("modFit.RData")
+} else {
+  modFit <- train(classe ~., data=training, method="rf")
+}
+
+```
+
+```{r predicting on testing data}
+
+# predict on testing data in order to estimate out of sample error
+predictions_test <- predict(modFit, testing)
+confusion_test <- confusionMatrix(predictions_test, testing$classe)
+
+# print standard output
+confusion_test
+
+# print heatmap output
+confusion_test_df <- as.data.frame(confusion_test$table)
+ggplot(confusion_test_df) + geom_tile(aes(x=Prediction, y=Reference, fill=Freq)) + geom_text(aes(x=Prediction,y=Reference,label=Freq)) + scale_fill_gradient(low="white",high="red",breaks=seq(from=0, to=max(confusion_test_df$Freq), by=max(confusion_test_df$Freq)))
+
+```
+
+```{r predicting on validation data}
+
+# predicting on validation data
+
+predictions_validation <- predict(modFit, validation)
+
+```
+
+```{r outputting files to submit on course website}
+
+# outputting files to submit on course website
+# function from https://class.coursera.org/predmachlearn-006/assignment/view?assignment_id=5
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(predictions_validation)
+
+# all 20 predictions were correct on the course website
+
+```
