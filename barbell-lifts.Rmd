@@ -5,7 +5,7 @@ date: "Saturday, October 11, 2014"
 output: html_document
 ---
 
-```{r loading libraries, echo=FALSE}
+```{r loading libraries, echo=FALSE, warning=FALSE, results='hide'}
 
 require(caret)
 require(dplyr)
@@ -76,7 +76,7 @@ training <- training %>% select(classe, user_name, roll_belt, pitch_belt, yaw_be
 nzv <- nearZeroVar(training)
 ```
 
-```{r training with random forests}
+```{r training with random forests, since this kind of data has no expectation of linearity and this is one of the most powerful algorithms for non-linear data}
 
 # training with random forests
 
@@ -91,14 +91,17 @@ if (loadExistingModel) {
 
 ```
 
-```{r predicting on testing data}
+```{r predicting on testing data in order to estimate out of sample error rate}
 
-# predict on testing data in order to estimate out of sample error
+# predict on testing data in order to estimate out of sample error rate
 predictions_test <- predict(modFit, testing)
 confusion_test <- confusionMatrix(predictions_test, testing$classe)
 
-# print standard output
+# print standard output, which includes the "accuracy" metric we can use to estimate out of sample error rate
 confusion_test
+
+# the accuracy is 99.6%, indicating an extremely low out of sample error rate.
+# in addition, the sensitiity and specificity for every class is >= 99%, again indicating very low out of sample error.
 
 # print heatmap output
 confusion_test_df <- as.data.frame(confusion_test$table)
